@@ -11,7 +11,7 @@ EVENT_HANDLER_FUNCTION_NAME = os.environ.get('EVENT_HANDLER_FUNCTION_NAME','')
 ssm = boto3.client('ssm')
 lambda_client = boto3.client('lambda')
 
-def lambda_handler(
+def handler(
     event,
     context,
 ):

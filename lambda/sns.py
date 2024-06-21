@@ -8,7 +8,7 @@ PARAMETER_NAME = os.environ.get('SSM_PARAMETER_NAME','dev/concurrent-job-count')
 
 ssm = boto3.client('ssm')
 
-def lambda_handler(
+def handler(
     event,
     context,
 ):
