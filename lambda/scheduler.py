@@ -4,8 +4,8 @@ import os
 import boto3
 from botocore.exceptions import ClientError
 
-MAX_CONCURRENT_JOB_COUNT = os.environ.get('MAX_CONCURRENT_JOB',5)
-PARAMETER_NAME = os.environ.get('SSM_PARAMETER_NAME','dev/concurrent-job-count')
+MAX_CONCURRENT_JOB_COUNT = int(os.environ.get('MAX_CONCURRENT_JOB_COUNT',5))
+PARAMETER_NAME = os.environ.get('SSM_PARAMETER_NAME','/dev/concurrent-job-count')
 EVENT_HANDLER_FUNCTION_NAME = os.environ.get('EVENT_HANDLER_FUNCTION_NAME','')
 
 ssm = boto3.client('ssm')
@@ -29,35 +29,45 @@ def handler(
 
         if operation == 'POST':
             body = json.loads(event['body'])
+            has_delay = 'delay' in body
+            has_id = 'id' in body
+            is_integer = True
+            try:
+                int(body.get('delay'))
+            except:
+                is_integer = False
 
+            if not all([
+                has_id,
+                has_delay,
+                is_integer,
+            ]):
+                response = error_response(
+                    status_code=400,
+                    message='Invalid Input',
+                )
+                return response
+            
             if concurrent_job_count < MAX_CONCURRENT_JOB_COUNT:
                 can_submit_task = True
 
-            error_message = {
-                'message': 'Max concurrency exceeded',
-            }
-
-            error_message_str = json.dumps(
-                obj=error_message,
+            response = error_response(
+                status_code=400,
+                message='Max concurrency exceeded',
             )
-
-            error_response = {
-                'statusCode': 400,
-                'body': error_message_str,
-            }
             
             if not can_submit_task:
-                return error_response
+                return response
             
             send_job(
-                request_body=body,
+                request_body=event,
             )
 
             concurrent_job_count = concurrent_job_count + 1
 
             ssm.put_parameter(
                 Name=parameter_name,
-                Value=concurrent_job_count,
+                Value=str(concurrent_job_count),
                 Type='String',
                 Overwrite=True
             )
@@ -76,17 +86,41 @@ def handler(
             return success_response
         
         else:
-            return {
-                'statusCode': 400,
-                'body': json.dumps({'message': 'Unsupported HTTP method'})
-            }
-    
-    except ClientError as e:
-        return {
-            'statusCode': 500,
-            'body': json.dumps({'error': str(e)})
-        }
 
+            response = error_response(
+                status_code=400,
+                message='Unsupported HTTP method',
+            )
+
+            return response
+    
+    except Exception as e:
+
+        response = error_response(
+            status_code=500,
+            message=str(e),
+        )
+
+        return response
+
+def error_response(
+    status_code: int,
+    message: str,
+):
+    error_message = {
+        'message': message,
+    }
+    
+    error_message_str = json.dumps(
+        obj=error_message,
+    )
+
+    error_response = {
+        'statusCode': status_code,
+        'body': error_message_str,
+    }
+
+    return error_response
 
 def send_job(
     request_body,

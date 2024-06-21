@@ -24,13 +24,13 @@ data "aws_iam_policy_document" "sns_topic_policy" {
 }
 
 resource "aws_lambda_function" "this" {
-  filename      = local.lambda_source
-  function_name = local.lambda_name
+  filename      = local.sns_lambda_source
+  function_name = local.sns_lambda_name
   handler       = "sns.handler"
   memory_size   = 128
   role = aws_iam_role.function_role.arn
   timeout       = 10
-  source_code_hash = filebase64sha256(local.lambda_source)
+  source_code_hash = filebase64sha256(local.sns_lambda_source)
   runtime = "python3.9"
   environment {
     variables = local.env
@@ -62,7 +62,7 @@ resource "aws_cloudwatch_log_group" "function_log_group" {
 }
 
 resource "aws_iam_role" "function_role" {
-  name               = "${local.lambda_name}-lambda-role"
+  name               = "${local.sns_lambda_name}-lambda-role"
   assume_role_policy = jsonencode({
     "Version" : "2012-10-17",
     "Statement" : [
@@ -77,8 +77,8 @@ resource "aws_iam_role" "function_role" {
   })
 }
 
-resource "aws_iam_policy" "lambda_policy" {
-  name   = "${local.lambda_name}-lambda-policy"
+resource "aws_iam_policy" "sns_lambda_policy" {
+  name   = "${local.sns_lambda_name}-lambda-policy"
   policy = jsonencode({
     "Version" : "2012-10-17",
     "Statement" : [
@@ -102,7 +102,7 @@ resource "aws_iam_policy" "lambda_policy" {
   })
 }
 
-resource "aws_iam_role_policy_attachment" "lambda_policy_attachment" {
+resource "aws_iam_role_policy_attachment" "sns_lambda_policy_attachment" {
   role = aws_iam_role.function_role.id
-  policy_arn = aws_iam_policy.lambda_policy.arn
+  policy_arn = aws_iam_policy.sns_lambda_policy.arn
 }

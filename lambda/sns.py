@@ -4,7 +4,7 @@ import boto3
 from botocore.exceptions import ClientError
 
 
-PARAMETER_NAME = os.environ.get('SSM_PARAMETER_NAME','dev/concurrent-job-count')
+PARAMETER_NAME = os.environ.get('SSM_PARAMETER_NAME','/dev/concurrent-job-count')
 
 ssm = boto3.client('ssm')
 
@@ -26,7 +26,7 @@ def handler(
         concurrent_job_count = concurrent_job_count - 1
         ssm.put_parameter(
             Name=parameter_name,
-            Value=concurrent_job_count,
+            Value=str(concurrent_job_count),
             Type='String',
             Overwrite=True
         )
