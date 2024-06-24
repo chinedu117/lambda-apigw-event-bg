@@ -64,7 +64,7 @@ resource "aws_iam_policy" "jb_lambda_policy" {
         {
             "Effect": "Allow",
             "Action": "events:PutEvents",
-            "Resource": "*"
+            "Resource": "${aws_cloudwatch_event_bus.custom_event_bus.arn}"
         }
     ]
   })

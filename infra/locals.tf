@@ -9,6 +9,7 @@ locals {
   sns_topic = "${var.project_name}-event-responder-sns-topic"
 
   concurrent_job_parameter_name = "/dev/concurrent-job-count"
+  user_table_name = "UsersConcurrentJobsCount"
   event_bus_name = "dataspan-chinedu"
   env = {
 
@@ -16,6 +17,7 @@ locals {
     EVENT_BUS_NAME = local.event_bus_name
     MAX_CONCURRENT_JOB_COUNT = 5
     EVENT_HANDLER_FUNCTION_NAME = local.job_lambda_name
+    USERS_TABLE_NAME = local.user_table_name
 
   }
   

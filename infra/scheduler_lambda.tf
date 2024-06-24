@@ -64,15 +64,16 @@ resource "aws_iam_policy" "js_lambda_policy" {
        {
             "Effect": "Allow",
             "Action": [
-                "ssm:GetParameter",
-                "ssm:PutParameter"
+                "dynamodb:GetItem",
+                "dynamodb:Query",
+                "dynamodb:PutItem"
             ],
-            "Resource": "*"
+            "Resource": "${aws_dynamodb_table.user_job_counts.arn}"
         },
         {
             "Effect": "Allow",
             "Action": "lambda:InvokeFunction",
-            "Resource": "*"
+            "Resource": "${aws_lambda_function.jb_this.arn}"
         }
     ]
   })

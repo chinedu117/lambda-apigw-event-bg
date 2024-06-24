@@ -93,10 +93,10 @@ resource "aws_iam_policy" "sns_lambda_policy" {
        {
             "Effect": "Allow",
             "Action": [
-                "ssm:GetParameter",
-                "ssm:PutParameter"
+                "dynamodb:GetItem",
+                "dynamodb:PutItem"
             ],
-            "Resource": "*"
+            "Resource": "${aws_dynamodb_table.user_job_counts.arn}"
         }
     ]
   })

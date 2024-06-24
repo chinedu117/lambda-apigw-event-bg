@@ -2,14 +2,14 @@ import json
 import os
 
 import boto3
+from boto3.dynamodb import conditions
 from botocore.exceptions import ClientError
 
 MAX_CONCURRENT_JOB_COUNT = int(os.environ.get('MAX_CONCURRENT_JOB_COUNT',5))
-PARAMETER_NAME = os.environ.get('SSM_PARAMETER_NAME','/dev/concurrent-job-count')
 EVENT_HANDLER_FUNCTION_NAME = os.environ.get('EVENT_HANDLER_FUNCTION_NAME','')
-
-ssm = boto3.client('ssm')
 lambda_client = boto3.client('lambda')
+USERS_TABLE_NAME = os.environ.get('USERS_TABLE_NAME','UsersConcurrentJobsCount' )
+dynamodb = boto3.resource('dynamodb')
 
 def handler(
     event,
@@ -18,15 +18,8 @@ def handler(
     
     try:
         operation = event['httpMethod']
-        parameter_name = PARAMETER_NAME
+        table = dynamodb.Table(USERS_TABLE_NAME)
         
-        response = ssm.get_parameter(
-            Name=parameter_name,
-            WithDecryption=True,
-        )
-        concurrent_job_count = int(response['Parameter']['Value'])
-        can_submit_task = False
-
         if operation == 'POST':
             body = json.loads(event['body'])
             has_delay = 'delay' in body
@@ -48,6 +41,32 @@ def handler(
                 )
                 return response
             
+            user_id = str(body.get('id'))
+            result = table.query(
+                KeyConditionExpression=conditions.Key('userId').eq(user_id)
+            )
+            user = None
+            if result['Count'] > 0:
+                user = result['Items'][0]
+            
+            if not user:
+                new_user = {
+                    'userId': user_id,
+                    'jobCount': "0"
+                }
+                table.put_item(
+                    Item=new_user,
+                )
+                response = table.get_item(
+                    Key={
+                        'userId': user_id,
+                    }
+                )
+                user = response.get('Item')
+
+            concurrent_job_count = int(user.get('jobCount'))
+            can_submit_task = False
+
             if concurrent_job_count < MAX_CONCURRENT_JOB_COUNT:
                 can_submit_task = True
 
@@ -65,11 +84,9 @@ def handler(
 
             concurrent_job_count = concurrent_job_count + 1
 
-            ssm.put_parameter(
-                Name=parameter_name,
-                Value=str(concurrent_job_count),
-                Type='String',
-                Overwrite=True
+            user['jobCount'] = str(concurrent_job_count)
+            table.put_item(
+                Item=user,
             )
             
             success_message = {
